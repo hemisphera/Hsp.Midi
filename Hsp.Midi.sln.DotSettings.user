@@ -1,0 +1,11 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=aa0030c0_002Da604_002D4789_002Db830_002Df93fdae4fb14/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="Test1" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;xUnit::84C91F14-C89A-42EE-B509-FA46F7AE0A73::net6.0::Hsp.Midi.Test.UnitTest1.Test1&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::84C91F14-C89A-42EE-B509-FA46F7AE0A73::net6.0::Hsp.Midi.Test.UnitTest1.Test2&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::84C91F14-C89A-42EE-B509-FA46F7AE0A73::net6.0::Hsp.Midi.Test.UnitTest1.CreatePort&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::84C91F14-C89A-42EE-B509-FA46F7AE0A73::net6.0::Hsp.Midi.Test.UnitTest1.SendMessageToPort&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::84C91F14-C89A-42EE-B509-FA46F7AE0A73::net6.0::Hsp.Midi.Test.UnitTest1.CreateAndDestroyPort&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::84C91F14-C89A-42EE-B509-FA46F7AE0A73::net6.0::Hsp.Midi.Test.UnitTest1.SendMessageToPortOnAdhocPort&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>
