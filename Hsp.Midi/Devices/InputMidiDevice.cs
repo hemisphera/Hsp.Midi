@@ -10,7 +10,6 @@ namespace Hsp.Midi;
 
 public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 {
-
   public static MidiDeviceInfo[] Enumerate()
   {
     var count = midiInGetNumDevs();
@@ -21,9 +20,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
   {
     var caps = new MidiInCapabilities();
     var devId = (IntPtr)deviceId;
-    var result = midiInGetDevCaps(devId, ref caps, SizeOfMidiHeader);
-    if (result != MidiDeviceException.MmSysErrNoerror)
-      throw new MidiDeviceException(MidiDeviceType.Input, result);
+    RunMidiProc(MidiDeviceType.Input, () => midiInGetDevCaps(devId, ref caps, SizeOfMidiHeader));
     return new MidiDeviceInfo(deviceId, caps);
   }
 
@@ -44,9 +41,9 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 
   private MidiHeaderBuilder HeaderBuilder { get; } = new MidiHeaderBuilder();
 
-  private IntPtr Handle { get; set; }
+  private IntPtr _handle;
 
-  private bool HandleValid => Handle != default;
+  private bool HandleValid => _handle != default;
 
   public int SysExBufferSize { get; set; } = 4096;
 
@@ -75,27 +72,12 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
   public override void Open()
   {
     if (IsOpen) return;
-
-    var result = midiInOpen(out var handle, DeviceId, _midiInProc, IntPtr.Zero, CallbackFunction);
-    if (result != MidiDeviceException.MmSysErrNoerror)
-      throw new MidiDeviceException(this, result);
-    Handle = handle;
-
+    RunMidiProc(() => midiInOpen(out _handle, DeviceId, _midiInProc, IntPtr.Zero, CallbackFunction));
     lock (_lockObject)
     {
-      result = AddSysExBuffer();
-      if (result == MidiDeviceException.MmSysErrNoerror)
-        result = AddSysExBuffer();
-      if (result == MidiDeviceException.MmSysErrNoerror)
-        result = AddSysExBuffer();
-      if (result == MidiDeviceException.MmSysErrNoerror)
-        result = AddSysExBuffer();
-
-      if (result == MidiDeviceException.MmSysErrNoerror)
-        result = midiInStart(Handle);
-
-      if (result != MidiDeviceException.MmSysErrNoerror)
-        throw new MidiDeviceException(this, result);
+      foreach (var _ in Enumerable.Range(0, 4))
+        AddSysExBuffer();
+      RunMidiProc(() => midiInStart(_handle));
     }
 
     IsOpen = true;
@@ -106,12 +88,10 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
     if (!IsOpen) return;
 
     Reset();
-    var result = midiInClose(Handle);
-    if (result != MidiDeviceException.MmSysErrNoerror)
-      throw new MidiDeviceException(this, result);
+    RunMidiProc(() => midiInClose(_handle));
 
     IsOpen = false;
-    Handle = default;
+    _handle = default;
   }
 
   public override void Reset()
@@ -120,17 +100,15 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
     lock (_lockObject)
     {
       IsResetting = true;
-      var result = midiInReset(Handle);
-      if (result == MidiDeviceException.MmSysErrNoerror)
+      try
       {
+        RunMidiProc(() => midiInReset(_handle));
         while (_bufferCount > 0)
           Monitor.Wait(_lockObject);
-        IsResetting = false;
       }
-      else
+      finally
       {
         IsResetting = false;
-        throw new MidiDeviceException(this, result);
       }
     }
   }
@@ -210,10 +188,12 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
           MessageReceived?.Invoke(this, message);
         }
 
-        var result = AddSysExBuffer();
-        if (result != MidiDeviceException.MmSysErrNoerror)
+        try
         {
-          Exception ex = new MidiDeviceException(this, result);
+          AddSysExBuffer();
+        }
+        catch (MidiDeviceException ex)
+        {
           RaiseErrorEvent(ex);
         }
       }
@@ -237,10 +217,12 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
         Marshal.Copy(header.data, data, 0, data.Length);
 
         InvalidSysExMessageReceived?.Invoke(this, data);
-        var result = AddSysExBuffer();
-        if (result != MidiDeviceException.MmSysErrNoerror)
+        try
         {
-          Exception ex = new MidiDeviceException(this, result);
+          AddSysExBuffer();
+        }
+        catch (MidiDeviceException ex)
+        {
           RaiseErrorEvent(ex);
         }
       }
@@ -251,11 +233,12 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 
   private void ReleaseBuffer(IntPtr headerPtr)
   {
-    var result = midiInUnprepareHeader(Handle, headerPtr, SizeOfMidiHeader);
-
-    if (result != MidiDeviceException.MmSysErrNoerror)
+    try
     {
-      Exception ex = new MidiDeviceException(this, result);
+      RunMidiProc(() => midiInUnprepareHeader(_handle, headerPtr, SizeOfMidiHeader));
+    }
+    catch (MidiDeviceException ex)
+    {
       RaiseErrorEvent(ex);
     }
 
@@ -268,7 +251,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
     Monitor.Pulse(_lockObject);
   }
 
-  public int AddSysExBuffer()
+  private void AddSysExBuffer()
   {
     // Initialize the MidiHeader builder.
     HeaderBuilder.BufferLength = SysExBufferSize;
@@ -277,39 +260,28 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
     // Get the pointer to the built MidiHeader.
     var headerPtr = HeaderBuilder.Result;
 
-    // Prepare the header to be used.
-    var result = midiInPrepareHeader(Handle, headerPtr, SizeOfMidiHeader);
-
-    // If the header was perpared successfully.
-    if (result == MidiDeviceException.MmSysErrNoerror)
+    try
     {
+      RunMidiProc(() => midiInPrepareHeader(_handle, headerPtr, SizeOfMidiHeader));
       _bufferCount++;
 
-      // Add the buffer to the InputDevice.
-      result = midiInAddBuffer(Handle, headerPtr, SizeOfMidiHeader);
-
-      // If the buffer could not be added.
-      if (result != MidiDeviceException.MmSysErrNoerror)
+      try
       {
-        // Unprepare header - there's a chance that this will fail 
-        // for whatever reason, but there's not a lot that can be
-        // done at this point.
-        midiInUnprepareHeader(Handle, headerPtr, SizeOfMidiHeader);
-
+        RunMidiProc(() => midiInAddBuffer(_handle, headerPtr, SizeOfMidiHeader));
+      }
+      catch
+      {
+        RunMidiProc(() => midiInUnprepareHeader(_handle, headerPtr, SizeOfMidiHeader));
         _bufferCount--;
-
-        // Destroy header.
-        HeaderBuilder.Destroy();
+        throw;
       }
     }
     // Else the header could not be prepared.
-    else
+    catch
     {
-      // Destroy header.
       HeaderBuilder.Destroy();
+      throw;
     }
-
-    return result;
   }
 
   // Represents the method that handles messages from Windows.
@@ -359,5 +331,4 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
   private const int MIM_LONGERROR = 0x3C6;
   private const int MIM_MOREDATA = 0x3CC;
   private const int MHDR_DONE = 0x00000001;
-
 }

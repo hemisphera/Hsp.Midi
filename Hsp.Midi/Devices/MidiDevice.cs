@@ -69,6 +69,38 @@ public abstract class MidiDevice : IMidiDevice, IDisposable
     }
   }
 
+  protected bool TryRunMidiProc(Func<int> func)
+  {
+    try
+    {
+      RunMidiProc(func);
+      return true;
+    }
+    catch (MidiDeviceException)
+    {
+      return false;
+    }
+  }
+
+  protected void RunMidiProc(Func<int> func)
+  {
+    RunMidiProc(this, func);
+  }
+
+  protected static void RunMidiProc(MidiDeviceType deviceType, Func<int> func)
+  {
+    var result = func();
+    if (result != MidiDeviceException.MmSysErrNoerror)
+      throw new MidiDeviceException(deviceType, result);
+  }
+
+  protected static void RunMidiProc(MidiDevice device, Func<int> func)
+  {
+    var result = func();
+    if (result != MidiDeviceException.MmSysErrNoerror)
+      throw new MidiDeviceException(device, result);
+  }
+
   /// <summary>
   /// Resets the device.
   /// </summary>
