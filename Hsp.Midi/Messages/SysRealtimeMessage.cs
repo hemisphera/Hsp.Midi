@@ -1,5 +1,3 @@
-using Hsp.Midi.Infrastructure;
-
 namespace Hsp.Midi.Messages;
 
 /// <summary>

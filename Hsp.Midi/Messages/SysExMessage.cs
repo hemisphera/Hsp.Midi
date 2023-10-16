@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Hsp.Midi.Infrastructure;
 
 namespace Hsp.Midi.Messages;
 

@@ -1,4 +1,4 @@
-namespace Hsp.Midi.Infrastructure;
+namespace Hsp.Midi;
 
 /// <summary>
 /// Defines constants for ChannelMessage types.

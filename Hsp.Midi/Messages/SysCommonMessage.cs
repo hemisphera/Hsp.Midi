@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using Hsp.Midi.Infrastructure;
 
 namespace Hsp.Midi.Messages;
 

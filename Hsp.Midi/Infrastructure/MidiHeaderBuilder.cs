@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Runtime.InteropServices;
-using Hsp.Midi.Infrastructure;
 using Hsp.Midi.Messages;
 
 namespace Hsp.Midi;
