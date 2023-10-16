@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 
 namespace Hsp.Midi;
 
-public abstract class MidiDevice : IDevice, IDisposable
+public abstract class MidiDevice : IMidiDevice, IDisposable
 {
 
   public static MidiDeviceInfo[] EnumerateAll()
   {
-    return InputMidiMidiDevice.Enumerate().Concat(OutputMidiDevice.Enumerate()).ToArray();
+    return InputMidiDevice.Enumerate().Concat(OutputMidiDevice.Enumerate()).ToArray();
   }
 
 

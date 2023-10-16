@@ -8,7 +8,7 @@ using Hsp.Midi.Messages;
 
 namespace Hsp.Midi;
 
-public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
+public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 {
 
   public static MidiDeviceInfo[] Enumerate()
@@ -22,8 +22,8 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
     var caps = new MidiInCapabilities();
     var devId = (IntPtr)deviceId;
     var result = midiInGetDevCaps(devId, ref caps, SizeOfMidiHeader);
-    if (result != DeviceException.MmSysErrNoerror)
-      throw new InputException(result);
+    if (result != MidiDeviceException.MmSysErrNoerror)
+      throw new MidiDeviceException(MidiDeviceType.Input, result);
     return new MidiDeviceInfo(deviceId, caps);
   }
 
@@ -59,14 +59,14 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
   /// Initializes a new instance of the InputDevice class with the 
   /// specified device ID.
   /// </summary>
-  public InputMidiMidiDevice(MidiDeviceInfo device)
+  public InputMidiDevice(MidiDeviceInfo device)
     : base(device)
   {
     device.AssertType(MidiDeviceType.Input);
     _midiInProc = HandleMessage;
   }
 
-  public InputMidiMidiDevice(string deviceName)
+  public InputMidiDevice(string deviceName)
     : this(Get(deviceName))
   {
   }
@@ -77,25 +77,25 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
     if (IsOpen) return;
 
     var result = midiInOpen(out var handle, DeviceId, _midiInProc, IntPtr.Zero, CallbackFunction);
-    if (result != DeviceException.MmSysErrNoerror)
-      throw new InputException(result);
+    if (result != MidiDeviceException.MmSysErrNoerror)
+      throw new MidiDeviceException(this, result);
     Handle = handle;
 
     lock (_lockObject)
     {
       result = AddSysExBuffer();
-      if (result == DeviceException.MmSysErrNoerror)
+      if (result == MidiDeviceException.MmSysErrNoerror)
         result = AddSysExBuffer();
-      if (result == DeviceException.MmSysErrNoerror)
+      if (result == MidiDeviceException.MmSysErrNoerror)
         result = AddSysExBuffer();
-      if (result == DeviceException.MmSysErrNoerror)
+      if (result == MidiDeviceException.MmSysErrNoerror)
         result = AddSysExBuffer();
 
-      if (result == DeviceException.MmSysErrNoerror)
+      if (result == MidiDeviceException.MmSysErrNoerror)
         result = midiInStart(Handle);
 
-      if (result != DeviceException.MmSysErrNoerror)
-        throw new InputException(result);
+      if (result != MidiDeviceException.MmSysErrNoerror)
+        throw new MidiDeviceException(this, result);
     }
 
     IsOpen = true;
@@ -107,8 +107,8 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
 
     Reset();
     var result = midiInClose(Handle);
-    if (result != DeviceException.MmSysErrNoerror)
-      throw new InputException(result);
+    if (result != MidiDeviceException.MmSysErrNoerror)
+      throw new MidiDeviceException(this, result);
 
     IsOpen = false;
     Handle = default;
@@ -121,7 +121,7 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
     {
       IsResetting = true;
       var result = midiInReset(Handle);
-      if (result == DeviceException.MmSysErrNoerror)
+      if (result == MidiDeviceException.MmSysErrNoerror)
       {
         while (_bufferCount > 0)
           Monitor.Wait(_lockObject);
@@ -130,7 +130,7 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
       else
       {
         IsResetting = false;
-        throw new InputException(result);
+        throw new MidiDeviceException(this, result);
       }
     }
   }
@@ -211,9 +211,9 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
         }
 
         var result = AddSysExBuffer();
-        if (result != DeviceException.MmSysErrNoerror)
+        if (result != MidiDeviceException.MmSysErrNoerror)
         {
-          Exception ex = new InputException(result);
+          Exception ex = new MidiDeviceException(this, result);
           RaiseErrorEvent(ex);
         }
       }
@@ -238,9 +238,9 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
 
         InvalidSysExMessageReceived?.Invoke(this, data);
         var result = AddSysExBuffer();
-        if (result != DeviceException.MmSysErrNoerror)
+        if (result != MidiDeviceException.MmSysErrNoerror)
         {
-          Exception ex = new InputException(result);
+          Exception ex = new MidiDeviceException(this, result);
           RaiseErrorEvent(ex);
         }
       }
@@ -253,9 +253,9 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
   {
     var result = midiInUnprepareHeader(Handle, headerPtr, SizeOfMidiHeader);
 
-    if (result != DeviceException.MmSysErrNoerror)
+    if (result != MidiDeviceException.MmSysErrNoerror)
     {
-      Exception ex = new InputException(result);
+      Exception ex = new MidiDeviceException(this, result);
       RaiseErrorEvent(ex);
     }
 
@@ -281,7 +281,7 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
     var result = midiInPrepareHeader(Handle, headerPtr, SizeOfMidiHeader);
 
     // If the header was perpared successfully.
-    if (result == DeviceException.MmSysErrNoerror)
+    if (result == MidiDeviceException.MmSysErrNoerror)
     {
       _bufferCount++;
 
@@ -289,7 +289,7 @@ public sealed class InputMidiMidiDevice : MidiDevice, IInputMidiDevice
       result = midiInAddBuffer(Handle, headerPtr, SizeOfMidiHeader);
 
       // If the buffer could not be added.
-      if (result != DeviceException.MmSysErrNoerror)
+      if (result != MidiDeviceException.MmSysErrNoerror)
       {
         // Unprepare header - there's a chance that this will fail 
         // for whatever reason, but there's not a lot that can be

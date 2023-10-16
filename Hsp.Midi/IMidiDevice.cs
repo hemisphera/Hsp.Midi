@@ -1,6 +1,6 @@
 namespace Hsp.Midi;
 
-public interface IDevice
+public interface IMidiDevice
 {
 
   void Open();

@@ -6,7 +6,7 @@ namespace Hsp.Midi;
 public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
 {
 
-  public InputMidiMidiDevice InputMidiMidiDevice { get; }
+  public InputMidiDevice InputMidiDevice { get; }
 
   public OutputMidiDevice OutputMidiDevice { get; }
 
@@ -16,14 +16,14 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
   public event EventHandler<IMidiMessage> MessageReceived;
 
 
-  public MidiPipe(InputMidiMidiDevice inputMidiMidiDevice, OutputMidiDevice outputMidiDevice)
+  public MidiPipe(InputMidiDevice inputMidiDevice, OutputMidiDevice outputMidiDevice)
   {
-    InputMidiMidiDevice = inputMidiMidiDevice;
+    InputMidiDevice = inputMidiDevice;
     OutputMidiDevice = outputMidiDevice;
   }
 
   public MidiPipe(string inputDeviceName, string outputDeviceName)
-    : this(new InputMidiMidiDevice(inputDeviceName), new OutputMidiDevice(outputDeviceName))
+    : this(new InputMidiDevice(inputDeviceName), new OutputMidiDevice(outputDeviceName))
   {
   }
 
@@ -32,8 +32,8 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
     if (IsOpen) return;
     try
     {
-      InputMidiMidiDevice.MessageReceived += InputDevice_MessageReceived;
-      InputMidiMidiDevice.Open();
+      InputMidiDevice.MessageReceived += InputDevice_MessageReceived;
+      InputMidiDevice.Open();
       OutputMidiDevice.Open();
       IsOpen = true;
     }
@@ -46,8 +46,8 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
 
   public void Close()
   {
-    InputMidiMidiDevice.MessageReceived -= InputDevice_MessageReceived;
-    if (InputMidiMidiDevice.IsOpen) InputMidiMidiDevice.TryClose();
+    InputMidiDevice.MessageReceived -= InputDevice_MessageReceived;
+    if (InputMidiDevice.IsOpen) InputMidiDevice.TryClose();
     if (OutputMidiDevice.IsOpen) OutputMidiDevice.TryClose();
     IsOpen = false;
   }
@@ -67,7 +67,7 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
 
   public override string ToString()
   {
-    return $"{InputMidiMidiDevice.DeviceInfo.Name} => {OutputMidiDevice.DeviceInfo.Name}";
+    return $"{InputMidiDevice.DeviceInfo.Name} => {OutputMidiDevice.DeviceInfo.Name}";
   }
 
 }

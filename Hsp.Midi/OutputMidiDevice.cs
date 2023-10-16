@@ -25,8 +25,8 @@ namespace Hsp.Midi
       // Get the device's capabilities.
       var devId = (IntPtr)deviceId;
       var result = midiOutGetDevCaps(devId, ref caps, Marshal.SizeOf(caps));
-      if (result != DeviceException.MmSysErrNoerror)
-        throw new OutputException(result);
+      if (result != MidiDeviceException.MmSysErrNoerror)
+        throw new MidiDeviceException(MidiDeviceType.Output, result);
       return new MidiDeviceInfo(deviceId, caps);
     }
 
@@ -128,8 +128,8 @@ namespace Hsp.Midi
       lock (_lockObject)
       {
         var result = midiOutShortMsg(Handle, message);
-        if (result != DeviceException.MmSysErrNoerror)
-          throw new OutputException(result);
+        if (result != MidiDeviceException.MmSysErrNoerror)
+          throw new MidiDeviceException(this, result);
       }
     }
 
@@ -144,7 +144,7 @@ namespace Hsp.Midi
         int result = midiOutPrepareHeader(Handle, headerBuilder.Result, SizeOfMidiHeader);
 
         // If the system exclusive buffer was prepared successfully.
-        if (result == DeviceException.MmSysErrNoerror)
+        if (result == MidiDeviceException.MmSysErrNoerror)
         {
           bufferCount++;
 
@@ -152,14 +152,14 @@ namespace Hsp.Midi
           result = midiOutLongMsg(Handle, headerBuilder.Result, SizeOfMidiHeader);
 
           // If the system exclusive message could not be sent.
-          if (result != DeviceException.MmSysErrNoerror)
+          if (result != MidiDeviceException.MmSysErrNoerror)
           {
             midiOutUnprepareHeader(Handle, headerBuilder.Result, SizeOfMidiHeader);
             bufferCount--;
             headerBuilder.Destroy();
 
             // Throw an exception.
-            throw new OutputException(result);
+            throw new MidiDeviceException(this, result);
           }
         }
         // Else the system exclusive buffer could not be prepared.
@@ -169,7 +169,7 @@ namespace Hsp.Midi
           headerBuilder.Destroy();
 
           // Throw an exception.
-          throw new OutputException(result);
+          throw new MidiDeviceException(this, result);
         }
       }
     }
@@ -190,8 +190,8 @@ namespace Hsp.Midi
       if (IsOpen) return;
       var result = midiOutOpen(out var handle, DeviceId, _midiOutProc, IntPtr.Zero, CallbackFunction);
       Handle = handle;
-      if (result != DeviceException.MmSysErrNoerror)
-        throw new OutputException(result);
+      if (result != MidiDeviceException.MmSysErrNoerror)
+        throw new MidiDeviceException(this, result);
       IsOpen = true;
     }
 
@@ -202,13 +202,13 @@ namespace Hsp.Midi
       {
         // Reset the OutputDevice.
         var result = midiOutReset(Handle);
-        if (result == DeviceException.MmSysErrNoerror)
+        if (result == MidiDeviceException.MmSysErrNoerror)
         {
           while (bufferCount > 0)
             Monitor.Wait(_lockObject);
         }
         else
-          throw new OutputException(result);
+          throw new MidiDeviceException(this, result);
       }
     }
 
@@ -216,8 +216,8 @@ namespace Hsp.Midi
     {
       if (!IsOpen) return;
       var result = midiOutClose(Handle);
-      if (result != DeviceException.MmSysErrNoerror)
-        throw new OutputException(result);
+      if (result != MidiDeviceException.MmSysErrNoerror)
+        throw new MidiDeviceException(this, result);
       Handle = default;
       IsOpen = false;
     }
@@ -245,9 +245,9 @@ namespace Hsp.Midi
 
         // Unprepare the buffer.
         var result = midiOutUnprepareHeader(Handle, headerPtr, SizeOfMidiHeader);
-        if (result != DeviceException.MmSysErrNoerror)
+        if (result != MidiDeviceException.MmSysErrNoerror)
         {
-          Exception ex = new OutputException(result);
+          Exception ex = new MidiDeviceException(this, result);
           RaiseErrorEvent(ex);
         }
 

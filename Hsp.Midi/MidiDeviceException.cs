@@ -1,31 +1,46 @@
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+
 namespace Hsp.Midi;
 
-/// <summary>
-/// The base class for all MIDI device exception classes.
-/// </summary>
-public class MidiDeviceException : DeviceException
+public class MidiDeviceException : ApplicationException
 {
+  [DllImport("winmm.dll", CharSet = CharSet.Unicode)]
+  private static extern int midiInGetErrorText(int errCode, StringBuilder errMsg, int sizeOfErrMsg);
 
-  public const int MIDIERR_UNPREPARED = 64; /* header not prepared */
-  public const int MIDIERR_STILLPLAYING = 65; /* still something playing */
-  public const int MIDIERR_NOMAP = 66; /* no configured instruments */
-  public const int MIDIERR_NOTREADY = 67; /* hardware is still busy */
-  public const int MIDIERR_NODEVICE = 68; /* port no longer connected */
-  public const int MIDIERR_INVALIDSETUP = 69; /* invalid MIF */
-  public const int MIDIERR_BADOPENMODE = 70; /* operation unsupported w/ open mode */
-  public const int MIDIERR_DONT_CONTINUE = 71; /* thru device 'eating' a message */
-  public const int MIDIERR_LASTERROR = 71; /* last error in range */
+  [DllImport("winmm.dll", CharSet = CharSet.Unicode)]
+  private static extern int midiOutGetErrorText(int errCode, StringBuilder message, int sizeOfMessage);
 
 
-  /// <summary>
-  /// Initializes a new instance of the DeviceException class with the
-  /// specified error code.
-  /// </summary>
-  /// <param name="errCode">
-  /// The error code.
-  /// </param>
-  public MidiDeviceException(int errCode) : base(errCode)
+  public const int MmSysErrNoerror = 0; /* no error */
+
+  public int ErrorCode { get; }
+
+  public MidiDevice Device { get; }
+
+
+  public MidiDeviceException(MidiDevice device, int errCode)
+    : this(device.DeviceInfo.Type, errCode)
   {
+    Device = device;
   }
 
+  public MidiDeviceException(MidiDeviceType type, int errCode)
+    : base(GetErrMessage(type, errCode))
+  {
+    ErrorCode = errCode;
+  }
+
+
+  private static string GetErrMessage(MidiDeviceType type, int errorCode)
+  {
+    var sb = new StringBuilder(128);
+    var result = type == MidiDeviceType.Input
+      ? midiInGetErrorText(errorCode, sb, sb.Capacity)
+      : midiOutGetErrorText(errorCode, sb, sb.Capacity);
+    return result == MmSysErrNoerror
+      ? sb.ToString()
+      : "Unknown error.";
+  }
 }

@@ -42,7 +42,7 @@ public class MidiDeviceInfo
   public MidiDevice CreateDevice()
   {
     var device = Type == MidiDeviceType.Input
-      ? (MidiDevice)new InputMidiMidiDevice(this)
+      ? (MidiDevice)new InputMidiDevice(this)
       : (MidiDevice)new OutputMidiDevice(this);
     return device;
   }
