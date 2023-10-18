@@ -9,7 +9,6 @@ namespace Hsp.Midi
   [StructLayout(LayoutKind.Sequential)]
   internal struct MidiHeader
   {
-
     /// <summary>
     /// Pointer to MIDI data.
     /// </summary>
@@ -61,6 +60,12 @@ namespace Hsp.Midi
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
     public int[] reservedArray;
 
-  }
 
+    public static MidiHeader FromPointer(IntPtr headerPtr)
+    {
+      if (Marshal.PtrToStructure(headerPtr, typeof(MidiHeader)) is not MidiHeader header)
+        throw new InvalidOperationException("Invalid header pointer.");
+      return header;
+    }
+  }
 }

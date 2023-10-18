@@ -10,6 +10,12 @@ namespace Hsp.Midi
 {
   public sealed class OutputMidiDevice : MidiDevice, IOutputMidiDevice
   {
+
+    private const int MomOpen = 0x3C7;
+    private const int MomClose = 0x3C8;
+    private const int MomDone = 0x3C9;
+    
+    
     public static MidiDeviceInfo[] Enumerate()
     {
       var count = midiOutGetNumDevs();
@@ -62,25 +68,17 @@ namespace Hsp.Midi
     private static extern int midiOutClose(IntPtr handle);
 
 
-    private const int MOM_OPEN = 0x3C7;
-    private const int MOM_CLOSE = 0x3C8;
-    private const int MOM_DONE = 0x3C9;
-
-    // Represents the method that handles messages from Windows.
     private delegate void MidiOutProc(IntPtr hnd, int msg, IntPtr instance, IntPtr param1, IntPtr param2);
 
-    // For releasing buffers.
     private Queue<Action> DelegateQueue { get; } = new Queue<Action>();
 
     private readonly object _lockObject = new object();
 
     private IntPtr _handle;
 
-    // The number of buffers still in the queue.
-    private int bufferCount = 0;
+    private int _bufferCount;
 
-    // Builds MidiHeader structures for sending system exclusive messages.
-    private MidiHeaderBuilder headerBuilder = new MidiHeaderBuilder();
+    private readonly MidiHeaderBuilder _headerBuilder = new MidiHeaderBuilder();
 
     private readonly MidiOutProc _midiOutProc;
 
@@ -127,30 +125,30 @@ namespace Hsp.Midi
     {
       lock (_lockObject)
       {
-        headerBuilder.InitializeBuffer(message);
-        headerBuilder.Build();
+        _headerBuilder.InitializeBuffer(message);
+        _headerBuilder.Build();
 
         try
         {
-          RunMidiProc(() => midiOutPrepareHeader(_handle, headerBuilder.Result, SizeOfMidiHeader));
-          bufferCount++;
+          RunMidiProc(() => midiOutPrepareHeader(_handle, _headerBuilder.Result, SizeOfMidiHeader));
+          _bufferCount++;
 
           // Send system exclusive message.
           try
           {
-            RunMidiProc(() => midiOutLongMsg(_handle, headerBuilder.Result, SizeOfMidiHeader));
+            RunMidiProc(() => midiOutLongMsg(_handle, _headerBuilder.Result, SizeOfMidiHeader));
           }
           catch (MidiDeviceException)
           {
-            RunMidiProc(() => midiOutUnprepareHeader(_handle, headerBuilder.Result, SizeOfMidiHeader));
-            bufferCount--;
+            RunMidiProc(() => midiOutUnprepareHeader(_handle, _headerBuilder.Result, SizeOfMidiHeader));
+            _bufferCount--;
             throw;
           }
         }
         // Else the system exclusive buffer could not be prepared.
         catch
         {
-          headerBuilder.Destroy();
+          _headerBuilder.Destroy();
           throw;
         }
       }
@@ -180,7 +178,7 @@ namespace Hsp.Midi
       lock (_lockObject)
       {
         RunMidiProc(() => midiOutReset(_handle));
-        while (bufferCount > 0)
+        while (_bufferCount > 0)
           Monitor.Wait(_lockObject);
       }
     }
@@ -197,13 +195,13 @@ namespace Hsp.Midi
     // Handles Windows messages.
     private void HandleMessage(IntPtr hnd, int msg, IntPtr instance, IntPtr param1, IntPtr param2)
     {
-      if (msg == MOM_OPEN)
+      if (msg == MomOpen)
       {
       }
-      else if (msg == MOM_CLOSE)
+      else if (msg == MomClose)
       {
       }
-      else if (msg == MOM_DONE)
+      else if (msg == MomDone)
         DelegateQueue.Enqueue(() => ReleaseBuffer(param1));
     }
 
@@ -222,13 +220,13 @@ namespace Hsp.Midi
           RaiseErrorEvent(ex);
         }
 
-        headerBuilder.Destroy(headerPtr);
+        _headerBuilder.Destroy(headerPtr);
 
-        bufferCount--;
+        _bufferCount--;
 
         Monitor.Pulse(_lockObject);
 
-        Debug.Assert(bufferCount >= 0);
+        Debug.Assert(_bufferCount >= 0);
       }
     }
 
