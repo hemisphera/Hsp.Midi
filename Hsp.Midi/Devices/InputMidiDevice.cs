@@ -46,8 +46,6 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 
   private readonly MidiInProc _midiInProc;
 
-  private readonly MidiHeaderBuilder _headerBuilder = new();
-
   private IntPtr _handle;
 
   public int SysExBufferSize { get; set; } = 4096;
@@ -244,17 +242,14 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
       RaiseErrorEvent(ex);
     }
 
-    _headerBuilder.Destroy(headerPtr);
+    MidiHeader.Deallocate(headerPtr);
     DecrementBufferCount();
     Monitor.Pulse(_lockObject);
   }
 
   private void AddSysExBuffer()
   {
-    _headerBuilder.BufferLength = SysExBufferSize;
-    _headerBuilder.Build();
-
-    var headerPtr = _headerBuilder.Result;
+    var headerPtr = MidiHeader.Allocate(new byte[SysExBufferSize]);
 
     try
     {
@@ -274,7 +269,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
     }
     catch
     {
-      _headerBuilder.Destroy();
+      MidiHeader.Deallocate(headerPtr);
       throw;
     }
   }

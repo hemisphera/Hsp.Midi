@@ -78,8 +78,6 @@ namespace Hsp.Midi
 
     private int _bufferCount;
 
-    private readonly MidiHeaderBuilder _headerBuilder = new MidiHeaderBuilder();
-
     private readonly MidiOutProc _midiOutProc;
 
 
@@ -125,22 +123,21 @@ namespace Hsp.Midi
     {
       lock (_lockObject)
       {
-        _headerBuilder.InitializeBuffer(message);
-        _headerBuilder.Build();
+        var ptr = MidiHeader.Allocate(message);
 
         try
         {
-          RunMidiProc(() => midiOutPrepareHeader(_handle, _headerBuilder.Result, SizeOfMidiHeader));
+          RunMidiProc(() => midiOutPrepareHeader(_handle, ptr, SizeOfMidiHeader));
           _bufferCount++;
 
           // Send system exclusive message.
           try
           {
-            RunMidiProc(() => midiOutLongMsg(_handle, _headerBuilder.Result, SizeOfMidiHeader));
+            RunMidiProc(() => midiOutLongMsg(_handle, ptr, SizeOfMidiHeader));
           }
           catch (MidiDeviceException)
           {
-            RunMidiProc(() => midiOutUnprepareHeader(_handle, _headerBuilder.Result, SizeOfMidiHeader));
+            RunMidiProc(() => midiOutUnprepareHeader(_handle, ptr, SizeOfMidiHeader));
             _bufferCount--;
             throw;
           }
@@ -148,7 +145,7 @@ namespace Hsp.Midi
         // Else the system exclusive buffer could not be prepared.
         catch
         {
-          _headerBuilder.Destroy();
+          MidiHeader.Deallocate(ptr);
           throw;
         }
       }
@@ -220,13 +217,10 @@ namespace Hsp.Midi
           RaiseErrorEvent(ex);
         }
 
-        _headerBuilder.Destroy(headerPtr);
-
+        MidiHeader.Deallocate(headerPtr);
         _bufferCount--;
 
         Monitor.Pulse(_lockObject);
-
-        Debug.Assert(_bufferCount >= 0);
       }
     }
 

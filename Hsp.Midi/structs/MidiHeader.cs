@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
+using Hsp.Midi.Messages;
 
 namespace Hsp.Midi
 {
@@ -66,6 +68,61 @@ namespace Hsp.Midi
       if (Marshal.PtrToStructure(headerPtr, typeof(MidiHeader)) is not MidiHeader header)
         throw new InvalidOperationException("Invalid header pointer.");
       return header;
+    }
+
+    public static IntPtr Allocate(byte[] data)
+    {
+      var header = new MidiHeader
+      {
+        bufferLength = data.Length,
+        bytesRecorded = data.Length,
+        data = Marshal.AllocHGlobal(data.Length),
+        flags = 0
+      };
+
+      for (var i = 0; i < data.Length; i++)
+        Marshal.WriteByte(header.data, i, data[i]);
+
+      IntPtr result;
+      try
+      {
+        result = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(MidiHeader)));
+      }
+      catch (Exception)
+      {
+        Marshal.FreeHGlobal(header.data);
+
+        throw;
+      }
+
+      try
+      {
+        Marshal.StructureToPtr(header, result, false);
+      }
+      catch (Exception)
+      {
+        Marshal.FreeHGlobal(header.data);
+        Marshal.FreeHGlobal(result);
+
+        throw;
+      }
+
+      return result;
+    }
+
+    public static IntPtr Allocate(SysExMessage message)
+    {
+      var messageData = message.SysExType == SysExType.Start
+        ? message.GetBytes()
+        : message.GetBytes().Skip(1).ToArray();
+      return Allocate(messageData);
+    }
+
+    public static void Deallocate(IntPtr headerPtr)
+    {
+      var header = FromPointer(headerPtr);
+      Marshal.FreeHGlobal(header.data);
+      Marshal.FreeHGlobal(headerPtr);
     }
   }
 }
