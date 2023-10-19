@@ -8,7 +8,6 @@ namespace Hsp.Midi.Messages;
 [ImmutableObject(true)]
 public sealed class ChannelMessage : ShortMessage
 {
-
   private const int CommandMask = ~240;
 
   private const int MidiChannelMask = ~15;
@@ -45,7 +44,6 @@ public sealed class ChannelMessage : ShortMessage
 
   public override string ToString()
   {
-    return $"{Command}{Data1} (Ch{Channel + 1}): {Data2}";
+    return $"{Command} {Data1} (Ch{Channel}): {Data2}";
   }
-
 }

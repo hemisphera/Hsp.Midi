@@ -10,7 +10,6 @@ namespace Hsp.Midi.Messages;
 /// </summary>
 public sealed class SysExMessage : IMidiMessage, IEnumerable
 {
-
   /// <summary>
   /// Maximum value for system exclusive channels.
   /// </summary>
@@ -84,4 +83,9 @@ public sealed class SysExMessage : IMidiMessage, IEnumerable
     return Data.GetEnumerator();
   }
 
+  public string ToString()
+  {
+    var hexString = ((IMidiMessage)this).ToHexString();
+    return $"SysEx {SysExType}: {hexString}";
+  }
 }

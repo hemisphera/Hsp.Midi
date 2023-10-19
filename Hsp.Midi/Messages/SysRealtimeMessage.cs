@@ -9,7 +9,6 @@ namespace Hsp.Midi.Messages;
 /// </remarks>
 public sealed class SysRealtimeMessage : ShortMessage
 {
-
   /// <summary>
   /// Gets the SysRealtimeType.
   /// </summary>
@@ -27,4 +26,8 @@ public sealed class SysRealtimeMessage : ShortMessage
     SysRealtimeType = type;
   }
 
+  public override string ToString()
+  {
+    return $"SysRealtime {SysRealtimeType}";
+  }
 }

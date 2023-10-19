@@ -32,4 +32,9 @@ public sealed class SysCommonMessage : ShortMessage
     Message = message;
   }
 
+  public override string ToString()
+  {
+    return $"SysCommon {SysCommonType}";
+  }
+
 }
