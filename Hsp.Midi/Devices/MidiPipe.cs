@@ -5,7 +5,6 @@ namespace Hsp.Midi;
 
 public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
 {
-
   public InputMidiDevice InputMidiDevice { get; }
 
   public OutputMidiDevice OutputMidiDevice { get; }
@@ -33,8 +32,8 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
     try
     {
       InputMidiDevice.MessageReceived += InputDevice_MessageReceived;
-      InputMidiDevice.Open();
-      OutputMidiDevice.Open();
+      if (!InputMidiDevice.IsOpen) InputMidiDevice.Open();
+      if (!OutputMidiDevice.IsOpen) OutputMidiDevice.Open();
       IsOpen = true;
     }
     catch
@@ -44,12 +43,21 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
     }
   }
 
-  public void Close()
+  public void Close(bool closeSourceDevices)
   {
     InputMidiDevice.MessageReceived -= InputDevice_MessageReceived;
-    if (InputMidiDevice.IsOpen) InputMidiDevice.TryClose();
-    if (OutputMidiDevice.IsOpen) OutputMidiDevice.TryClose();
+    if (closeSourceDevices)
+    {
+      if (InputMidiDevice.IsOpen) InputMidiDevice.TryClose();
+      if (OutputMidiDevice.IsOpen) OutputMidiDevice.TryClose();
+    }
+
     IsOpen = false;
+  }
+
+  public void Close()
+  {
+    Close(false);
   }
 
   public void Send(IMidiMessage message)
@@ -69,5 +77,4 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
   {
     return $"{InputMidiDevice.DeviceInfo.Name} => {OutputMidiDevice.DeviceInfo.Name}";
   }
-
 }
