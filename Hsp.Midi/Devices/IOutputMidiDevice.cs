@@ -2,9 +2,7 @@
 
 namespace Hsp.Midi;
 
-public interface IOutputMidiDevice : IMidiDevice
+public interface IOutputMidiDevice
 {
-
   void Send(IMidiMessage message);
-
 }

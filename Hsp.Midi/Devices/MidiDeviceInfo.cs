@@ -39,15 +39,6 @@ public class MidiDeviceInfo
   }
 
 
-  public MidiDevice CreateDevice()
-  {
-    var device = Type == MidiDeviceType.Input
-      ? (MidiDevice)new InputMidiDevice(this)
-      : (MidiDevice)new OutputMidiDevice(this);
-    return device;
-  }
-
-
   private static Version ParseVersion(int versionNum)
   {
     return new Version(

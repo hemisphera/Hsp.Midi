@@ -22,42 +22,18 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
   }
 
   public MidiPipe(string inputDeviceName, string outputDeviceName)
-    : this(new InputMidiDevice(inputDeviceName), new OutputMidiDevice(outputDeviceName))
+    : this(
+      InputMidiDevicePool.Instance.Open(inputDeviceName),
+      OutputMidiDevicePool.Instance.Open(outputDeviceName))
   {
-  }
-
-  public void Open()
-  {
-    if (IsOpen) return;
-    try
-    {
-      InputMidiDevice.MessageReceived += InputDevice_MessageReceived;
-      if (!InputMidiDevice.IsOpen) InputMidiDevice.Open();
-      if (!OutputMidiDevice.IsOpen) OutputMidiDevice.Open();
-      IsOpen = true;
-    }
-    catch
-    {
-      Close();
-      throw;
-    }
-  }
-
-  public void Close(bool closeSourceDevices)
-  {
-    InputMidiDevice.MessageReceived -= InputDevice_MessageReceived;
-    if (closeSourceDevices)
-    {
-      if (InputMidiDevice.IsOpen) InputMidiDevice.TryClose();
-      if (OutputMidiDevice.IsOpen) OutputMidiDevice.TryClose();
-    }
-
-    IsOpen = false;
+    InputMidiDevice.MessageReceived += InputDevice_MessageReceived;
   }
 
   public void Close()
   {
-    Close(false);
+    InputMidiDevice.MessageReceived -= InputDevice_MessageReceived;
+    InputMidiDevicePool.Instance.Close(InputMidiDevice);
+    OutputMidiDevicePool.Instance.Close(OutputMidiDevice);
   }
 
   public void Send(IMidiMessage message)

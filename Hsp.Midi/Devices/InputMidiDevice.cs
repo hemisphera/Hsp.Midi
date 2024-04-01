@@ -9,37 +9,6 @@ namespace Hsp.Midi;
 
 public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 {
-  private const int MimOpen = 0x3C1;
-  private const int MimClose = 0x3C2;
-  private const int MimData = 0x3C3;
-  private const int MimLongdata = 0x3C4;
-  private const int MimError = 0x3C5;
-  private const int MimLongerror = 0x3C6;
-  private const int MimMoredata = 0x3CC;
-
-  public static MidiDeviceInfo[] Enumerate()
-  {
-    var count = midiInGetNumDevs();
-    return Enumerable.Range(0, count).Select(Get).ToArray();
-  }
-
-  public static MidiDeviceInfo Get(int deviceId)
-  {
-    var caps = new MidiInCapabilities();
-    var devId = (IntPtr)deviceId;
-    RunMidiProc(MidiDeviceType.Input, () => midiInGetDevCaps(devId, ref caps, SizeOfMidiHeader));
-    return new MidiDeviceInfo(deviceId, caps);
-  }
-
-  public static MidiDeviceInfo Get(string deviceName)
-  {
-    var dev = Enumerate().FirstOrDefault(a => a.Name == deviceName);
-    if (dev == null)
-      throw new ArgumentException($"Device '{deviceName}' not found.", nameof(deviceName));
-    return dev;
-  }
-
-
   private int _bufferCount;
 
   private readonly object _lockObject = new object();
@@ -55,27 +24,18 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
   private List<byte> SysExDataBuffer { get; } = new List<byte>();
 
 
-  /// <summary>
-  /// Initializes a new instance of the InputDevice class with the 
-  /// specified device ID.
-  /// </summary>
-  public InputMidiDevice(MidiDeviceInfo device)
+  internal InputMidiDevice(MidiDeviceInfo device)
     : base(device)
   {
     device.AssertType(MidiDeviceType.Input);
     _midiInProc = HandleMessage;
   }
 
-  public InputMidiDevice(string deviceName)
-    : this(Get(deviceName))
-  {
-  }
 
-
-  public override void Open()
+  internal override void Open()
   {
     if (IsOpen) return;
-    RunMidiProc(() => midiInOpen(out _handle, DeviceId, _midiInProc, IntPtr.Zero, CallbackFunction));
+    RunMidiProc(() => midiInOpen(out _handle, DeviceId, _midiInProc, IntPtr.Zero, Constants.CallbackFunction));
     lock (_lockObject)
     {
       foreach (var _ in Enumerable.Range(0, 4))
@@ -86,7 +46,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
     IsOpen = true;
   }
 
-  public override void Close()
+  internal override void Close()
   {
     if (!IsOpen) return;
 
@@ -116,12 +76,6 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
     }
   }
 
-  public override void Dispose()
-  {
-    Reset();
-    Close();
-  }
-
   /// <summary>
   /// Occurs when any message was received. The underlying type of the message is as specific as possible.
   /// Channel, Common, Realtime or SysEx.
@@ -134,24 +88,32 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 
   private void HandleMessage(IntPtr hnd, int msg, IntPtr instance, IntPtr param1, IntPtr param2)
   {
+    const int mimOpen = 0x3C1;
+    const int mimClose = 0x3C2;
+    const int mimData = 0x3C3;
+    const int mimLongdata = 0x3C4;
+    const int mimError = 0x3C5;
+    const int mimLongerror = 0x3C6;
+    const int mimMoredata = 0x3CC;
+
     var param = new MidiInParams(param1, param2);
     switch (msg)
     {
-      case MimOpen:
+      case mimOpen:
         break;
-      case MimClose:
+      case mimClose:
         break;
-      case MimData:
-      case MimMoredata:
+      case mimData:
+      case mimMoredata:
         HandleShortMessage(param);
         break;
-      case MimLongdata:
+      case mimLongdata:
         HandleSysExMessage(param);
         break;
-      case MimError:
+      case mimError:
         InvalidShortMessageReceived?.Invoke(this, param.Param1.ToInt32());
         break;
-      case MimLongerror:
+      case mimLongerror:
         HandleInvalidSysExMessage(param);
         break;
     }
@@ -235,7 +197,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
   {
     try
     {
-      RunMidiProc(() => midiInUnprepareHeader(_handle, headerPtr, SizeOfMidiHeader));
+      RunMidiProc(() => midiInUnprepareHeader(_handle, headerPtr, Constants.SizeOfMidiHeader));
     }
     catch (MidiDeviceException ex)
     {
@@ -253,16 +215,16 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 
     try
     {
-      RunMidiProc(() => midiInPrepareHeader(_handle, headerPtr, SizeOfMidiHeader));
+      RunMidiProc(() => midiInPrepareHeader(_handle, headerPtr, Constants.SizeOfMidiHeader));
       IncrementBufferCount();
 
       try
       {
-        RunMidiProc(() => midiInAddBuffer(_handle, headerPtr, SizeOfMidiHeader));
+        RunMidiProc(() => midiInAddBuffer(_handle, headerPtr, Constants.SizeOfMidiHeader));
       }
       catch
       {
-        RunMidiProc(() => midiInUnprepareHeader(_handle, headerPtr, SizeOfMidiHeader));
+        RunMidiProc(() => midiInUnprepareHeader(_handle, headerPtr, Constants.SizeOfMidiHeader));
         DecrementBufferCount();
         throw;
       }
@@ -312,10 +274,4 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 
   [DllImport("winmm.dll")]
   private static extern int midiInAddBuffer(IntPtr handle, IntPtr headerPtr, int sizeOfMidiHeader);
-
-  [DllImport("winmm.dll")]
-  private static extern int midiInGetDevCaps(IntPtr deviceId, ref MidiInCapabilities caps, int sizeOfMidiInCaps);
-
-  [DllImport("winmm.dll")]
-  private static extern int midiInGetNumDevs();
 }
