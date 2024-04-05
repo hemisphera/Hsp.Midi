@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Hsp.Midi.Messages;
 
 namespace Hsp.Midi;
@@ -9,12 +10,14 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
 
   public OutputMidiDevice OutputMidiDevice { get; }
 
-  public bool IsOpen { get; private set; }
-
+  public Predicate<IMidiMessage> ForwardFilter { get; set; }
 
   public string Name => $"{InputMidiDevice.Name} => {OutputMidiDevice.Name}";
 
+
   public event EventHandler<IMidiMessage> MessageReceived;
+
+  public event EventHandler<MessageForwardEventArgs> MessageReceivedForForward;
 
 
   public MidiPipe(InputMidiDevice inputMidiDevice, OutputMidiDevice outputMidiDevice)
@@ -46,8 +49,17 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
 
   private void InputDevice_MessageReceived(object sender, IMidiMessage e)
   {
-    OutputMidiDevice.Send(e);
     MessageReceived?.Invoke(this, e);
+    var forwardEventArgs = new MessageForwardEventArgs(e);
+
+    var canForward = ForwardFilter?.Invoke(e) ?? true;
+    if (!canForward) return;
+
+    MessageReceivedForForward?.Invoke(this, forwardEventArgs);
+    foreach (var msg in forwardEventArgs.OutputMessages ?? Array.Empty<IMidiMessage>())
+    {
+      OutputMidiDevice.Send(msg);
+    }
   }
 
 
