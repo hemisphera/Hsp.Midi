@@ -36,6 +36,8 @@ public sealed class OutputMidiDevice : MidiDevice, IOutputMidiDevice
   private static extern int midiOutClose(IntPtr handle);
 
 
+  public string Name => DeviceInfo.Name;
+
   private delegate void MidiOutProc(IntPtr hnd, int msg, IntPtr instance, IntPtr param1, IntPtr param2);
 
   private Queue<Action> DelegateQueue { get; } = new Queue<Action>();

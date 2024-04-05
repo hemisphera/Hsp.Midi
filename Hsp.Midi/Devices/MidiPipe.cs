@@ -12,6 +12,8 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
   public bool IsOpen { get; private set; }
 
 
+  public string Name => $"{InputMidiDevice.Name} => {OutputMidiDevice.Name}";
+
   public event EventHandler<IMidiMessage> MessageReceived;
 
 

@@ -21,6 +21,8 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 
   private bool IsResetting { get; set; }
 
+  public string Name => DeviceInfo.Name;
+
   private List<byte> SysExDataBuffer { get; } = new List<byte>();
 
 

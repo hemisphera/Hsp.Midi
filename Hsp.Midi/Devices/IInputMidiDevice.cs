@@ -5,5 +5,7 @@ namespace Hsp.Midi;
 
 public interface IInputMidiDevice
 {
+  string Name { get; }
+
   event EventHandler<IMidiMessage> MessageReceived;
 }
