@@ -7,6 +7,8 @@ public abstract class MidiDevice
   internal int OpenCount { get; set; }
 
   public int DeviceId => DeviceInfo.Id;
+  
+  public string Name => DeviceInfo.Name;
 
   public MidiDeviceInfo DeviceInfo { get; }
 
