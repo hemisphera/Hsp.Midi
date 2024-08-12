@@ -2,9 +2,8 @@
 
 namespace Hsp.Midi;
 
-public class MidiDeviceInfo
+public class MidiDeviceInfo : IEquatable<MidiDeviceInfo>
 {
-
   public MidiDeviceType Type { get; }
 
   public string Name { get; }
@@ -56,5 +55,24 @@ public class MidiDeviceInfo
   public override string ToString()
   {
     return $"{Type}: {Name}";
+  }
+
+  public bool Equals(MidiDeviceInfo other)
+  {
+    if (ReferenceEquals(null, other)) return false;
+    if (ReferenceEquals(this, other)) return true;
+    return Type == other.Type && Id == other.Id;
+  }
+
+  public override bool Equals(object obj)
+  {
+    if (ReferenceEquals(null, obj)) return false;
+    if (ReferenceEquals(this, obj)) return true;
+    return obj.GetType() == GetType() && Equals((MidiDeviceInfo)obj);
+  }
+
+  public override int GetHashCode()
+  {
+    return HashCode.Combine((int)Type, Id);
   }
 }
