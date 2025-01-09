@@ -22,6 +22,10 @@ public abstract class ShortMessage : IPackedMessage
     return message & DataMask;
   }
 
+  internal static int GetData(int message)
+  {
+    return message & StatusMask;
+  }
 
   /// <summary>
   /// Gets the short message as a packed integer.

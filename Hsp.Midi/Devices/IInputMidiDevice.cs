@@ -3,9 +3,7 @@ using Hsp.Midi.Messages;
 
 namespace Hsp.Midi;
 
-public interface IInputMidiDevice
+public interface IInputMidiDevice : IMidiDevice
 {
-  string Name { get; }
-
   event EventHandler<IMidiMessage> MessageReceived;
 }

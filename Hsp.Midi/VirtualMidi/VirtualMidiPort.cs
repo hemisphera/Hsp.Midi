@@ -33,6 +33,10 @@ public sealed class VirtualMidiPort : IDisposable
   [DllImport(DllName, EntryPoint = "virtualMIDIShutdown", SetLastError = true, CharSet = CharSet.Unicode)]
   private static extern bool virtualMIDIShutdown(IntPtr instance);
 
+
+  public string Name { get; }
+
+
   public static VirtualMidiPort Create(string portName, uint maxSysexLength = TeVmDefaultSysexSize, uint flags = TeVmFlagsParseRx)
   {
     var instance = virtualMIDICreatePortEx2(portName, IntPtr.Zero, IntPtr.Zero, maxSysexLength, flags);
@@ -41,12 +45,13 @@ public sealed class VirtualMidiPort : IDisposable
       VirtualMidiException.ThrowLastError();
     }
 
-    return new VirtualMidiPort(instance, maxSysexLength);
+    return new VirtualMidiPort(portName, instance, maxSysexLength);
   }
 
 
-  private VirtualMidiPort(IntPtr instance, uint maxSysexLength)
+  private VirtualMidiPort(string name, IntPtr instance, uint maxSysexLength)
   {
+    Name = name;
     _instance = instance;
     _readBuffer = new byte[maxSysexLength];
     _maxSysexLength = maxSysexLength;
@@ -68,6 +73,7 @@ public sealed class VirtualMidiPort : IDisposable
       }
     });
   }
+
 
   private byte[] ReadCommand()
   {
