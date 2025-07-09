@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Hsp.Midi.Messages;
@@ -8,11 +7,6 @@ namespace Hsp.Midi;
 
 public sealed class OutputMidiDevice : MidiDevice, IOutputMidiDevice
 {
-  private const int MomOpen = 0x3C7;
-  private const int MomClose = 0x3C8;
-  private const int MomDone = 0x3C9;
-
-
   [DllImport("winmm.dll")]
   private static extern int midiOutReset(IntPtr handle);
 
@@ -38,22 +32,19 @@ public sealed class OutputMidiDevice : MidiDevice, IOutputMidiDevice
 
   private delegate void MidiOutProc(IntPtr hnd, int msg, IntPtr instance, IntPtr param1, IntPtr param2);
 
-  private Queue<Action> DelegateQueue { get; } = new Queue<Action>();
-
-  private readonly object _lockObject = new object();
-
-  private IntPtr _handle;
-
-  private int _bufferCount;
-
+  private readonly object _lockObject = new();
   private readonly MidiOutProc _midiOutProc;
 
+  private IntPtr _handle;
+  private int _bufferCount;
 
-  internal OutputMidiDevice(MidiDeviceInfo device) : base(device)
+
+  public OutputMidiDevice(MidiDeviceInfo device) : base(device)
   {
     device.AssertType(MidiDeviceType.Output);
     _midiOutProc = HandleMessage;
   }
+
 
   public void Send(IMidiMessage msg)
   {
@@ -106,18 +97,8 @@ public sealed class OutputMidiDevice : MidiDevice, IOutputMidiDevice
     }
   }
 
-  public void Send(SysCommonMessage message)
-  {
-    Send(message.Message);
-  }
 
-  public void Send(SysRealtimeMessage message)
-  {
-    Send(message.Message);
-  }
-
-
-  internal override void Open()
+  public override void Open()
   {
     if (IsOpen) return;
     RunMidiProc(() => midiOutOpen(out _handle, DeviceId, _midiOutProc, IntPtr.Zero, Constants.CallbackFunction));
@@ -135,11 +116,11 @@ public sealed class OutputMidiDevice : MidiDevice, IOutputMidiDevice
     }
   }
 
-  internal override void Close()
+  public override void Close()
   {
     if (!IsOpen) return;
     RunMidiProc(() => midiOutClose(_handle));
-    _handle = default;
+    _handle = 0;
     IsOpen = false;
   }
 
@@ -147,35 +128,6 @@ public sealed class OutputMidiDevice : MidiDevice, IOutputMidiDevice
   // Handles Windows messages.
   private void HandleMessage(IntPtr hnd, int msg, IntPtr instance, IntPtr param1, IntPtr param2)
   {
-    if (msg == MomOpen)
-    {
-    }
-    else if (msg == MomClose)
-    {
-    }
-    else if (msg == MomDone)
-      DelegateQueue.Enqueue(() => ReleaseBuffer(param1));
-  }
-
-  private void ReleaseBuffer(object state)
-  {
-    lock (_lockObject)
-    {
-      var headerPtr = (IntPtr)state;
-
-      try
-      {
-        RunMidiProc(() => midiOutUnprepareHeader(_handle, headerPtr, Constants.SizeOfMidiHeader));
-      }
-      catch (MidiDeviceException ex)
-      {
-        RaiseErrorEvent(ex);
-      }
-
-      MidiHeader.Deallocate(headerPtr);
-      _bufferCount--;
-
-      Monitor.Pulse(_lockObject);
-    }
+    // do nothing
   }
 }

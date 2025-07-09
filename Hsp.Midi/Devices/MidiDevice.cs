@@ -4,10 +4,8 @@ namespace Hsp.Midi;
 
 public abstract class MidiDevice
 {
-  internal int OpenCount { get; set; }
-
   public int DeviceId => DeviceInfo.Id;
-  
+
   public string Name => DeviceInfo.Name;
 
   public MidiDeviceInfo DeviceInfo { get; }
@@ -18,7 +16,7 @@ public abstract class MidiDevice
   public event EventHandler<Exception> Error;
 
 
-  internal MidiDevice(MidiDeviceInfo info)
+  protected MidiDevice(MidiDeviceInfo info)
   {
     DeviceInfo = info;
   }
@@ -37,12 +35,12 @@ public abstract class MidiDevice
   /// <summary>
   /// Opens the device.
   /// </summary>
-  internal abstract void Open();
+  public abstract void Open();
 
   /// <summary>
   /// Closes the device.
   /// </summary>
-  internal abstract void Close();
+  public abstract void Close();
 
   protected void RunMidiProc(Func<int> func)
   {

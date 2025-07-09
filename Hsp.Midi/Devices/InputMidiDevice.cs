@@ -10,21 +10,17 @@ namespace Hsp.Midi;
 public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
 {
   private int _bufferCount;
-
-  private readonly object _lockObject = new object();
-
-  private readonly MidiInProc _midiInProc;
-
   private IntPtr _handle;
+  private bool _isResetting;
+
+  private readonly object _lockObject = new();
+  private readonly MidiInProc _midiInProc;
+  private readonly List<byte> _sysExDataBuffer = new();
 
   public int SysExBufferSize { get; set; } = 4096;
 
-  private bool IsResetting { get; set; }
 
-  private List<byte> SysExDataBuffer { get; } = new List<byte>();
-
-
-  internal InputMidiDevice(MidiDeviceInfo device)
+  public InputMidiDevice(MidiDeviceInfo device)
     : base(device)
   {
     device.AssertType(MidiDeviceType.Input);
@@ -32,7 +28,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
   }
 
 
-  internal override void Open()
+  public override void Open()
   {
     if (IsOpen) return;
     RunMidiProc(() => midiInOpen(out _handle, DeviceId, _midiInProc, IntPtr.Zero, Constants.CallbackFunction));
@@ -46,7 +42,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
     IsOpen = true;
   }
 
-  internal override void Close()
+  public override void Close()
   {
     if (!IsOpen) return;
 
@@ -62,7 +58,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
     if (!IsOpen) return;
     lock (_lockObject)
     {
-      IsResetting = true;
+      _isResetting = true;
       try
       {
         RunMidiProc(() => midiInReset(_handle));
@@ -71,7 +67,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
       }
       finally
       {
-        IsResetting = false;
+        _isResetting = false;
       }
     }
   }
@@ -80,11 +76,11 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
   /// Occurs when any message was received. The underlying type of the message is as specific as possible.
   /// Channel, Common, Realtime or SysEx.
   /// </summary>
-  public event EventHandler<IMidiMessage> MessageReceived;
+  public event EventHandler<IMidiMessage>? MessageReceived;
 
-  public event EventHandler<int> InvalidShortMessageReceived;
+  public event EventHandler<int>? InvalidShortMessageReceived;
 
-  public event EventHandler<byte[]> InvalidSysExMessageReceived;
+  public event EventHandler<byte[]>? InvalidSysExMessageReceived;
 
   private void HandleMessage(IntPtr hnd, int msg, IntPtr instance, IntPtr param1, IntPtr param2)
   {
@@ -132,21 +128,21 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
       var param = (MidiInParams)state;
       var headerPtr = param.Param1;
       var header = MidiHeader.FromPointer(headerPtr);
-      if (!IsResetting)
+      if (!_isResetting)
       {
         for (var i = 0; i < header.bytesRecorded; i++)
         {
-          SysExDataBuffer.Add(Marshal.ReadByte(header.data, i));
+          _sysExDataBuffer.Add(Marshal.ReadByte(header.data, i));
         }
 
-        if (SysExDataBuffer.Count > 1 && SysExDataBuffer[0] == 0xF0 && SysExDataBuffer[^1] == 0xF7)
+        if (_sysExDataBuffer.Count > 1 && _sysExDataBuffer[0] == 0xF0 && _sysExDataBuffer[^1] == 0xF7)
         {
-          var message = new SysExMessage(SysExDataBuffer.ToArray())
+          var message = new SysExMessage(_sysExDataBuffer.ToArray())
           {
             Timestamp = param.Param2.ToInt32()
           };
 
-          SysExDataBuffer.Clear();
+          _sysExDataBuffer.Clear();
 
           MessageReceived?.Invoke(this, message);
         }
@@ -173,7 +169,7 @@ public sealed class InputMidiDevice : MidiDevice, IInputMidiDevice
       var headerPtr = param.Param1;
       var header = MidiHeader.FromPointer(headerPtr);
 
-      if (!IsResetting)
+      if (!_isResetting)
       {
         var data = new byte[header.bytesRecorded];
         Marshal.Copy(header.data, data, 0, data.Length);

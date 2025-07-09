@@ -15,7 +15,7 @@ public sealed class SongPositionPointerMessage : IMidiMessage
 
   public static SongPositionPointerMessage Parse(int data1, int data2)
   {
-      var position = (byte)data2;
+    var position = (byte)data2;
     position <<= 7;
     position |= (byte)data1;
     return new SongPositionPointerMessage(position);
@@ -25,6 +25,6 @@ public sealed class SongPositionPointerMessage : IMidiMessage
   {
     var data1 = (byte)(Position & 0x7F);
     var data2 = (byte)((Position >> 7) & 0x7F);
-    return new[] { (byte)Status, data1, data2 };
+    return [(byte)Status, data1, data2];
   }
 }

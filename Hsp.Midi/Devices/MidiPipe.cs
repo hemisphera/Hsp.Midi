@@ -1,44 +1,44 @@
 ﻿using System;
-using System.Collections.Generic;
 using Hsp.Midi.Messages;
 
 namespace Hsp.Midi;
 
 public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
 {
-  public InputMidiDevice InputMidiDevice { get; }
+  public IInputMidiDevice InputMidiDevice { get; }
 
-  public OutputMidiDevice OutputMidiDevice { get; }
+  public IOutputMidiDevice OutputMidiDevice { get; }
 
   public Predicate<IMidiMessage> ForwardFilter { get; set; }
 
   public string Name => $"{InputMidiDevice.Name} => {OutputMidiDevice.Name}";
 
-
-  public event EventHandler<IMidiMessage> MessageReceived;
-
-  public event EventHandler<MessageForwardEventArgs> MessageReceivedForForward;
+  public int DeviceId => -1;
 
 
-  public MidiPipe(InputMidiDevice inputMidiDevice, OutputMidiDevice outputMidiDevice)
+  public event EventHandler<IMidiMessage>? MessageReceived;
+
+  public event EventHandler<MessageForwardEventArgs>? MessageReceivedForForward;
+
+
+  public MidiPipe(IInputMidiDevice inputMidiDevice, IOutputMidiDevice outputMidiDevice)
   {
     InputMidiDevice = inputMidiDevice;
     OutputMidiDevice = outputMidiDevice;
   }
 
-  public MidiPipe(string inputDeviceName, string outputDeviceName)
-    : this(
-      InputMidiDevicePool.Instance.Open(inputDeviceName),
-      OutputMidiDevicePool.Instance.Open(outputDeviceName))
+  public void Open()
   {
     InputMidiDevice.MessageReceived += InputDevice_MessageReceived;
+  }
+
+  public void Reset()
+  {
   }
 
   public void Close()
   {
     InputMidiDevice.MessageReceived -= InputDevice_MessageReceived;
-    InputMidiDevicePool.Instance.Close(InputMidiDevice);
-    OutputMidiDevicePool.Instance.Close(OutputMidiDevice);
   }
 
   public void Send(IMidiMessage message)
@@ -47,7 +47,7 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
   }
 
 
-  private void InputDevice_MessageReceived(object sender, IMidiMessage e)
+  private void InputDevice_MessageReceived(object? sender, IMidiMessage e)
   {
     MessageReceived?.Invoke(this, e);
     var forwardEventArgs = new MessageForwardEventArgs(e);
@@ -56,7 +56,7 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
     if (!canForward) return;
 
     MessageReceivedForForward?.Invoke(this, forwardEventArgs);
-    foreach (var msg in forwardEventArgs.OutputMessages ?? Array.Empty<IMidiMessage>())
+    foreach (var msg in forwardEventArgs.OutputMessages)
     {
       OutputMidiDevice.Send(msg);
     }
@@ -65,6 +65,6 @@ public class MidiPipe : IInputMidiDevice, IOutputMidiDevice
 
   public override string ToString()
   {
-    return $"{InputMidiDevice.DeviceInfo.Name} => {OutputMidiDevice.DeviceInfo.Name}";
+    return $"{InputMidiDevice.Name} => {OutputMidiDevice.Name}";
   }
 }

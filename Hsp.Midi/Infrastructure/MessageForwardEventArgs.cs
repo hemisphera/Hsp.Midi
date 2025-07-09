@@ -12,9 +12,9 @@ public class MessageForwardEventArgs : EventArgs
   public MessageForwardEventArgs(IMidiMessage inputMessage)
   {
     InputMessage = inputMessage;
-    OutputMessages = new[]
-    {
+    OutputMessages =
+    [
       inputMessage
-    };
+    ];
   }
 }

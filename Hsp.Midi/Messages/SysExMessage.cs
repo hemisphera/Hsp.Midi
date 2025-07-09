@@ -31,7 +31,7 @@ public sealed class SysExMessage : IMidiMessage, IEnumerable
     if (Data.Length < 1)
       throw new ArgumentException("System exclusive data is too short.", nameof(data));
 
-    if (Data[0] != (byte)SysExType.Start && Data[0] != (byte)SysExType.Continuation)
+    if (Data[0] != (byte)SysExType.Start)
       throw new ArgumentException("Unknown status value.", nameof(data));
   }
 
@@ -83,7 +83,7 @@ public sealed class SysExMessage : IMidiMessage, IEnumerable
     return Data.GetEnumerator();
   }
 
-  public string ToString()
+  public override string ToString()
   {
     var hexString = ((IMidiMessage)this).ToHexString();
     return $"SysEx {SysExType}: {hexString}";

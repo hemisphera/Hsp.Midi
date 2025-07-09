@@ -10,7 +10,6 @@ namespace Hsp.Midi.Messages;
 /// </remarks>
 public abstract class ShortMessage : IPackedMessage
 {
-
   private const int StatusMask = ~255;
   protected const int DataMask = ~StatusMask;
   private const int Data1Mask = ~65280;
@@ -22,9 +21,14 @@ public abstract class ShortMessage : IPackedMessage
     return message & DataMask;
   }
 
-  internal static int GetData(int message)
+  internal static int GetData2(int message)
   {
-    return message & StatusMask;
+    return (message & ~Data2Mask) >> 16;
+  }
+
+  internal static int GetData1(int message)
+  {
+    return (message & ~Data1Mask) >> 8;
   }
 
   /// <summary>
@@ -49,13 +53,13 @@ public abstract class ShortMessage : IPackedMessage
 
   public int Data1
   {
-    get => (Message & ~Data1Mask) >> 8;
+    get => GetData1(Message);
     set => Message = Message & Data1Mask | value << 8;
   }
 
   public int Data2
   {
-    get => (Message & ~Data2Mask) >> 8 * 2;
+    get => GetData2(Message);
     set => Message = Message & Data2Mask | value << 8 * 2;
   }
 
@@ -65,5 +69,4 @@ public abstract class ShortMessage : IPackedMessage
     // unchecked?
     return new[] { (byte)Status, (byte)Data1, (byte)Data2 };
   }
-
 }
