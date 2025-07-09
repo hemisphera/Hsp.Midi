@@ -40,7 +40,7 @@ public sealed class VirtualMidiPort : IDisposable
   public string Name { get; }
 
   /// <summary>
-  /// Enables loopback. That is: any message that is sent to the port is automatically received on the input.
+  /// Enables loopback. That is: any message that is received on the port is automatically written back.
   /// This defaults to true.
   /// </summary>
   public bool Loopback { get; set; } = true;

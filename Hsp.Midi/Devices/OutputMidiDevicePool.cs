@@ -31,7 +31,9 @@ public class OutputMidiDevicePool : MidiDevicePool<IOutputMidiDevice>
 
   protected override IOutputMidiDevice CreateDevice(MidiDeviceInfo info)
   {
-    return new OutputMidiDevice(info);
+    return info.IsVirtual
+      ? new VirtualMidiOutputDevice(info)
+      : new OutputMidiDevice(info);
   }
 
   private OutputMidiDevicePool()
