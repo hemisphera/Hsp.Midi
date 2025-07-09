@@ -34,7 +34,7 @@ public sealed class SysCommonMessage : ShortMessage
 
   public override string ToString()
   {
-    return $"SysCommon {SysCommonType}";
+    return $"SysCommon {SysCommonType} {Data1} {Data2}";
   }
 
 }

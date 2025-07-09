@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Hsp.Midi;
 
-public class InputMidiDevicePool : MidiDevicePool<InputMidiDevice>
+public class InputMidiDevicePool : MidiDevicePool<IInputMidiDevice>
 {
   public static InputMidiDevicePool Instance { get; } = new();
 
@@ -29,9 +29,11 @@ public class InputMidiDevicePool : MidiDevicePool<InputMidiDevice>
     return new MidiDeviceInfo(deviceId, caps);
   }
 
-  protected override InputMidiDevice CreateDevice(MidiDeviceInfo info)
+  protected override IInputMidiDevice CreateDevice(MidiDeviceInfo info)
   {
-    return new InputMidiDevice(info);
+    return info.IsVirtual
+      ? new VirtualMidiInputDevice(info)
+      : new InputMidiDevice(info);
   }
 
   private InputMidiDevicePool()

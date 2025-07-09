@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace Hsp.Midi;
 
@@ -15,6 +16,11 @@ public class MidiDeviceInfo : IEquatable<MidiDeviceInfo>
   public int ProductId { get; }
 
   public Version DriverVersion { get; }
+
+  public bool IsVirtual
+  {
+    get { return VirtualMidiPort.Ports.Any(p => p.Name.Equals(Name, StringComparison.OrdinalIgnoreCase)); }
+  }
 
 
   internal MidiDeviceInfo(int id, MidiInCapabilities inCaps)

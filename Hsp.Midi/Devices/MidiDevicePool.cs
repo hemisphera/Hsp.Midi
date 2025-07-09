@@ -4,10 +4,11 @@ using System.Linq;
 
 namespace Hsp.Midi;
 
-public abstract class MidiDevicePool<T> where T : MidiDevice
+public abstract class MidiDevicePool<T> where T : IMidiDevice
 {
   private readonly List<T> _devices = new();
 
+  private readonly Dictionary<int, int> _openCounter = new();
 
   public abstract MidiDeviceInfo[] Enumerate();
 
@@ -15,7 +16,7 @@ public abstract class MidiDevicePool<T> where T : MidiDevice
 
   public MidiDeviceInfo Get(string deviceName)
   {
-    var dev = Enumerate().FirstOrDefault(a => a.Name == deviceName);
+    var dev = Enumerate().FirstOrDefault(a => a.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));
     if (dev == null)
       throw new ArgumentException($"Device '{deviceName}' not found.", nameof(deviceName));
     return dev;
@@ -23,7 +24,7 @@ public abstract class MidiDevicePool<T> where T : MidiDevice
 
 
   protected abstract T CreateDevice(MidiDeviceInfo info);
-  
+
 
   public T Open(MidiDeviceInfo info)
   {
@@ -37,9 +38,16 @@ public abstract class MidiDevicePool<T> where T : MidiDevice
         _devices.Add(device);
       }
 
-      device.OpenCount += 1;
+      UpdateCounter(device, 1);
       return device;
     }
+  }
+
+  private void UpdateCounter(T device, int delta)
+  {
+    if (_openCounter.TryGetValue(device.DeviceId, out var currCount))
+      currCount = 0;
+    _openCounter[device.DeviceId] = currCount + delta;
   }
 
   public T Open(int id)
@@ -55,20 +63,16 @@ public abstract class MidiDevicePool<T> where T : MidiDevice
   }
 
 
-  public void Close(T device)
+  public bool Close(T device, bool force = false)
   {
     lock (_devices)
     {
-      device.OpenCount -= 1;
-      if (device.OpenCount != 0) return;
+      UpdateCounter(device, -1);
+      if (!force && _openCounter[device.DeviceId] > 0) return false;
       device.Close();
       _devices.Remove(device);
+      _openCounter[device.DeviceId] = 0;
+      return true;
     }
-  }
-
-  public void CloseAll(T device)
-  {
-    while (device.OpenCount > 0)
-      Close(device);
   }
 }

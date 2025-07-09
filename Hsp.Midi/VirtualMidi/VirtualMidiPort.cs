@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +17,8 @@ public sealed class VirtualMidiPort : IDisposable
   public const uint TeVmFlagsParseRx = 1;
 
   private const string DllName = "teVirtualMIDI.dll";
+
+  internal static List<VirtualMidiPort> Ports { get; } = [];
 
 
   [DllImport(DllName, EntryPoint = "virtualMIDICreatePortEx2", SetLastError = true, CharSet = CharSet.Unicode)]
@@ -36,6 +39,12 @@ public sealed class VirtualMidiPort : IDisposable
 
   public string Name { get; }
 
+  /// <summary>
+  /// Enables loopback. That is: any message that is sent to the port is automatically received on the input.
+  /// This defaults to true.
+  /// </summary>
+  public bool Loopback { get; set; } = true;
+
 
   public static VirtualMidiPort Create(string portName, uint maxSysexLength = TeVmDefaultSysexSize, uint flags = TeVmFlagsParseRx)
   {
@@ -45,8 +54,13 @@ public sealed class VirtualMidiPort : IDisposable
       VirtualMidiException.ThrowLastError();
     }
 
-    return new VirtualMidiPort(portName, instance, maxSysexLength);
+    var item = new VirtualMidiPort(portName, instance, maxSysexLength);
+    Ports.Add(item);
+    return item;
   }
+
+
+  public event EventHandler<byte[]>? CommandReceived;
 
 
   private VirtualMidiPort(string name, IntPtr instance, uint maxSysexLength)
@@ -64,7 +78,9 @@ public sealed class VirtualMidiPort : IDisposable
         {
           _ct.Token.ThrowIfCancellationRequested();
           var command = ReadCommand();
-          WriteCommand(command);
+          CommandReceived?.Invoke(this, command);
+          if (Loopback)
+            WriteCommand(command);
         }
         catch
         {
@@ -90,7 +106,7 @@ public sealed class VirtualMidiPort : IDisposable
 
   public void WriteCommand(byte[] command)
   {
-    if (command == null || command.Length == 0)
+    if (command.Length == 0)
     {
       return;
     }
@@ -107,6 +123,8 @@ public sealed class VirtualMidiPort : IDisposable
     {
       VirtualMidiException.ThrowLastError();
     }
+
+    Ports.Remove(this);
   }
 
   public void Dispose()

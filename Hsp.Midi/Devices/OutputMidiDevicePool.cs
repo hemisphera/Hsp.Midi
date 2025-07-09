@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Hsp.Midi;
 
-public class OutputMidiDevicePool : MidiDevicePool<OutputMidiDevice>
+public class OutputMidiDevicePool : MidiDevicePool<IOutputMidiDevice>
 {
   public static OutputMidiDevicePool Instance { get; } = new();
 
@@ -29,7 +29,7 @@ public class OutputMidiDevicePool : MidiDevicePool<OutputMidiDevice>
     return new MidiDeviceInfo(deviceId, caps);
   }
 
-  protected override OutputMidiDevice CreateDevice(MidiDeviceInfo info)
+  protected override IOutputMidiDevice CreateDevice(MidiDeviceInfo info)
   {
     return new OutputMidiDevice(info);
   }
